@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.so }}
+
+    # bash nos tres sistemas: no Windows o shell padrao e o PowerShell, e ele
+    # desmonta "-Dexec.args=..." em dois argumentos antes de o Maven ver.
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+      matrix:
+        so: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Testes
+        run: mvn -B -ntp verify
+
+      - name: Colares e braceletes
+        run: mvn -B -ntp -q exec:java -Dexec.args="colares"
+
+      - name: De onde a media sai
+        run: mvn -B -ntp -q exec:java -Dexec.args="media"
+
+      - name: A formula contra a contagem bruta
+        run: mvn -B -ntp -q exec:java -Dexec.args="juiz"
+
+      - name: Os colares que nao se repetem
+        run: mvn -B -ntp -q exec:java -Dexec.args="primitivos"
+
+      - name: Relatorios de teste
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports-${{ matrix.so }}
+          path: target/surefire-reports
+
+  fundo:
+    # Ate 5 cores e 16 contas, com um caso de 16 milhoes de sequencias
+    # enumeradas uma a uma: leva dois minutos e meio e confere a propria medida.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Enumeracao ate cinco cores
+        run: mvn -B -ntp -q compile exec:java -Dexec.args="fundo"
